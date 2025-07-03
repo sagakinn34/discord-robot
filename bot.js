@@ -27,17 +27,29 @@ async function fetchRealAdSets() {
 
         console.log('📡 Facebook APIから広告データを取得中...');
         
+        // 日付範囲を設定（過去7日間）
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+        
         const response = await axios.get(
             `${META_BASE_URL}/${META_AD_ACCOUNT_ID}/adsets`,
             {
                 params: {
                     access_token: META_ACCESS_TOKEN,
-                    fields: 'id,name,status,daily_budget,lifetime_budget,created_time,updated_time,insights{spend,impressions,clicks,reach}'
+                    fields: `id,name,status,daily_budget,lifetime_budget,created_time,updated_time,insights.time_range({'since':'${startDate}','until':'${endDate}'}){spend,impressions,clicks,reach,ctr,cost_per_result}`
                 }
             }
         );
         
         console.log(`✅ ${response.data.data.length}個の広告セットを取得`);
+        
+        // デバッグ: 最初の広告セットのInsightsデータをログ出力
+        if (response.data.data.length > 0 && response.data.data[0].insights) {
+            console.log('💡 Insights データサンプル:', JSON.stringify(response.data.data[0].insights, null, 2));
+        } else {
+            console.log('⚠️ Insights データが取得されていません');
+        }
+        
         return response.data.data;
     } catch (error) {
         console.error('❌ Facebook API エラー:', error.response?.data || error.message);
@@ -52,19 +64,16 @@ async function fetchAdAccountInfo() {
             return null;
         }
 
-        // 今日の日付を取得
-const today = new Date().toISOString().split('T')[0];
-const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-const response = await axios.get(
-    `${META_BASE_URL}/${META_AD_ACCOUNT_ID}/adsets`,
-    {
-        params: {
-            access_token: META_ACCESS_TOKEN,
-            fields: 'id,name,status,daily_budget,lifetime_budget,created_time,updated_time,insights.date_preset(today){spend,impressions,clicks,reach,ctr},insights.date_preset(yesterday){spend,impressions,clicks,reach,ctr}'
-        }
-    }
-);       
+        const response = await axios.get(
+            `${META_BASE_URL}/${META_AD_ACCOUNT_ID}`,
+            {
+                params: {
+                    access_token: META_ACCESS_TOKEN,
+                    fields: 'name,account_status,balance,spend_cap,insights{spend,impressions,clicks}'
+                }
+            }
+        );
+        
         return response.data;
     } catch (error) {
         console.error('❌ 広告アカウント情報取得エラー:', error.response?.data || error.message);
@@ -98,6 +107,26 @@ const demoData = {
         { id: 'demo_3', name: 'デモ_リターゲティング', status: 'ACTIVE', daily_budget: 15000, spend_today: 12000 }
     ]
 };
+
+// Renderのポート要件対応（Web Service用）
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ヘルスチェック用エンドポイント
+app.get('/', (req, res) => {
+    res.json({
+        status: 'Discord Bot is running!',
+        bot_name: 'Facebook広告管理ロボット',
+        uptime: `${Math.floor(process.uptime())}秒`,
+        timestamp: new Date().toLocaleString('ja-JP')
+    });
+});
+
+// サーバー起動
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Web server running on port ${PORT}`);
+});
 
 // ボット起動時の処理
 client.once('ready', async () => {
@@ -401,29 +430,6 @@ async function handleRealStatus(interaction) {
             embed.addFields({
                 name: '🏪 アカウント情報',
                 value: `📱 **アカウント名**: ${accountInfo.name}\n💰 **残高**: ${accountInfo.balance ? Math.round(accountInfo.balance/100).toLocaleString() : 'N/A'}円\n📊 **ステータス**: ${accountInfo.account_status}`,
-                inline: false
-            });
-        }
-
-        // 高消化アドセットの警告
-        const highSpendAdSets = dataSource.filter(as => {
-            const spend = as.insights?.[0]?.spend || as.spend_today || 0;
-            const budget = as.daily_budget || 1;
-            const usage = spend / budget;
-            return usage > 0.8 && as.status === 'ACTIVE';
-        });
-
-        if (highSpendAdSets.length > 0) {
-            const warningText = highSpendAdSets.slice(0, 5).map(as => {
-                const spend = as.insights?.[0]?.spend || as.spend_today || 0;
-                const budget = as.daily_budget || 1;
-                const usage = Math.round((spend / budget) * 100);
-                return `⚠️ ${as.name.substring(0, 30)}... (${usage}%)`;
-            }).join('\n');
-
-            embed.addFields({
-                name: '⚠️ 注意が必要な広告セット',
-                value: warningText,
                 inline: false
             });
         }
