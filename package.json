@@ -1,7 +1,7 @@
 {
   "name": "discord-robot",
   "version": "1.0.0",
-  "description": "わたしのDiscordロボット",
+  "description": "Discord広告管理ロボット",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
@@ -9,9 +9,11 @@
   },
   "dependencies": {
     "discord.js": "^14.14.1",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "axios": "^1.6.2"
   },
   "engines": {
-    "node": "18.x"
+    "node": ">=18.x"
   }
 }
+
