@@ -1,0 +1,7 @@
+# 秘密のファイル（GitHubに上げちゃダメ）
+.env
+node_modules/
+*.log
+
+# Macの隠しファイル
+.DS_Store
