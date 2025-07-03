@@ -111,7 +111,7 @@ const demoData = {
 // Renderのポート要件対応（Web Service用）
 const express = require('express');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // ヘルスチェック用エンドポイント
 app.get('/', (req, res) => {
